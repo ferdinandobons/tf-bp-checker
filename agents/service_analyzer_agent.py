@@ -1,29 +1,102 @@
-from strands import Agent, tool
-from strands.models.ollama import OllamaModel
+"""
+Service Analyzer Agent for identifying AWS services in Terraform code.
 
-# Create Ollama model instance for service analysis
-ollama_model = OllamaModel(
-    host="http://localhost:11434",
-    model_id="llama3.2",
-    max_tokens=20000,
-    temperature=0.1,
-    keep_alive="10m",
+This module provides the ServiceAnalyzerAgent class that analyzes
+Terraform code and identifies all AWS services being used.
+"""
+
+from typing import Optional
+from strands import tool
+from .base import OllamaAgent
+from .config import (
+    SERVICE_ANALYZER_SYSTEM_PROMPT,
+    OLLAMA_HOST,
+    OLLAMA_MODEL_ID,
+    OLLAMA_MAX_TOKENS,
+    OLLAMA_TEMPERATURE,
+    OLLAMA_KEEP_ALIVE
 )
 
-SERVICE_ANALYZER_SYSTEM_PROMPT = """You are an AWS and Terraform expert specializing in analyzing Terraform code.
 
-Your task is to analyze Terraform code and identify ALL AWS services being used.
+class ServiceAnalyzerAgent(OllamaAgent):
+    """
+    Agent specialized in analyzing Terraform code to identify AWS services.
+    
+    This agent uses Ollama to parse Terraform code and extract all
+    AWS services referenced in resources, data sources, and modules.
+    """
+    
+    def __init__(
+        self,
+        host: str = OLLAMA_HOST,
+        model_id: str = OLLAMA_MODEL_ID,
+        max_tokens: int = OLLAMA_MAX_TOKENS,
+        temperature: float = OLLAMA_TEMPERATURE,
+        keep_alive: str = OLLAMA_KEEP_ALIVE
+    ):
+        """
+        Initialize the Service Analyzer Agent.
+        
+        Args:
+            host: Ollama server host URL
+            model_id: Model identifier
+            max_tokens: Maximum tokens for generation
+            temperature: Sampling temperature
+            keep_alive: Keep-alive duration for model
+        """
+        super().__init__(
+            system_prompt=SERVICE_ANALYZER_SYSTEM_PROMPT,
+            host=host,
+            model_id=model_id,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            keep_alive=keep_alive
+        )
+    
+    def analyze(self, terraform_code: str) -> str:
+        """
+        Analyze Terraform code and identify all AWS services.
+        
+        Args:
+            terraform_code: Complete Terraform code from all .tf files
+            
+        Returns:
+            JSON array of AWS service names as a string
+        """
+        print("🔍 Analyzing Terraform code to identify AWS services...")
+        
+        analysis_prompt = f"""Analyze the following Terraform code and \
+identify ALL AWS services being used:
 
-Look for:
-- Resource declarations (e.g., resource "aws_s3_bucket", resource "aws_iam_role")
-- Data sources (e.g., data "aws_ami", data "aws_vpc")
-- Module calls that might use AWS resources
-- Any AWS service references
+{terraform_code}
 
-Return ONLY a JSON array of AWS service names (without the "aws_" prefix), for example:
-["s3", "iam", "kms", "cloudwatch", "ec2", "vpc"]
+Return a JSON array of AWS service names."""
+        
+        services_str = self.execute(analysis_prompt)
+        
+        if services_str and len(services_str) > 0:
+            print(f"✅ AWS Services identified: {services_str}")
+            return services_str
+        
+        print("⚠️  No services identified, returning default")
+        return '["unknown"]'
 
-Be thorough and include all services you find. Return only the JSON array, nothing else."""
+
+# Global instance for backward compatibility
+_service_analyzer_instance: Optional[ServiceAnalyzerAgent] = None
+
+
+def get_service_analyzer() -> ServiceAnalyzerAgent:
+    """
+    Get or create the global ServiceAnalyzerAgent instance.
+    
+    Returns:
+        ServiceAnalyzerAgent instance
+    """
+    global _service_analyzer_instance
+    if _service_analyzer_instance is None:
+        _service_analyzer_instance = ServiceAnalyzerAgent()
+    return _service_analyzer_instance
 
 
 @tool
@@ -31,35 +104,18 @@ def analyze_aws_services(terraform_code: str) -> str:
     """
     Analyze Terraform code and identify all AWS services being used.
     
+    This is a tool wrapper for backward compatibility with the existing API.
+    
     Args:
-        terraform_code: The complete Terraform code from all .tf files in the module
+        terraform_code: Complete Terraform code from all .tf files
         
     Returns:
-        A JSON array of AWS service names found in the code
+        JSON array of AWS service names as a string
     """
     try:
-        print("🔍 Analyzing Terraform code to identify AWS services...")
-        
-        service_analyzer = Agent(
-            #model=ollama_model,
-            system_prompt=SERVICE_ANALYZER_SYSTEM_PROMPT,
-        )
-        
-        analysis_prompt = f"""Analyze the following Terraform code and identify ALL AWS services being used:
-
-{terraform_code}
-
-Return a JSON array of AWS service names."""
-        
-        services = service_analyzer(analysis_prompt)
-        services_str = str(services)
-        
-        if len(services_str) > 0:
-            print(f"✅ AWS Services identified: {services_str}")
-            return services_str
-        
-        return '["unknown"]'
-        
+        analyzer = get_service_analyzer()
+        return analyzer.analyze(terraform_code)
     except Exception as e:
-        print(f"❌ Error analyzing services: {str(e)}")
-        return f"Error identifying AWS services: {str(e)}"
+        error_msg = f"Error identifying AWS services: {str(e)}"
+        print(f"❌ {error_msg}")
+        return error_msg
