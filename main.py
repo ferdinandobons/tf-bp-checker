@@ -46,19 +46,19 @@ class TerraformFileReader:
         Returns:
             Sorted list of Path objects for .tf files
         """
-        directory_path = Path(directory)
-        
-        if not directory_path.exists():
-            print(f"❌ Error: Directory '{directory}' does not exist")
-            return []
-        
-        if not directory_path.is_dir():
-            print(f"❌ Error: '{directory}' is not a directory")
-            return []
-        
-        tf_files = list(directory_path.glob("*.tf"))
-        return sorted(tf_files)
+    directory_path = Path(directory)
     
+    if not directory_path.exists():
+        print(f"❌ Error: Directory '{directory}' does not exist")
+        return []
+    
+    if not directory_path.is_dir():
+        print(f"❌ Error: '{directory}' is not a directory")
+        return []
+    
+        tf_files = list(directory_path.glob("*.tf"))
+    return sorted(tf_files)
+
     @staticmethod
     def read_terraform_module(
         directory: str
@@ -76,24 +76,24 @@ class TerraformFileReader:
             - total_lines: Total number of lines across all files
         """
         tf_files = TerraformFileReader.find_terraform_files(directory)
-        
-        if not tf_files:
-            return {}, [], 0
-        
-        module_content = {}
-        total_lines = 0
-        
-        for tf_file in tf_files:
-            try:
-                with open(tf_file, "r", encoding="utf-8") as f:
-                    content = f.read()
-                    module_content[tf_file.name] = content
-                    total_lines += len(content.split('\n'))
-            except Exception as e:
-                print(f"⚠️  Warning: Could not read file '{tf_file}': {e}")
-        
-        return module_content, tf_files, total_lines
     
+    if not tf_files:
+        return {}, [], 0
+    
+    module_content = {}
+    total_lines = 0
+    
+    for tf_file in tf_files:
+        try:
+                with open(tf_file, "r", encoding="utf-8") as f:
+                content = f.read()
+                module_content[tf_file.name] = content
+                total_lines += len(content.split('\n'))
+        except Exception as e:
+            print(f"⚠️  Warning: Could not read file '{tf_file}': {e}")
+
+    return module_content, tf_files, total_lines
+
     @staticmethod
     def format_module_content(module_content: Dict[str, str]) -> str:
         """
@@ -105,15 +105,15 @@ class TerraformFileReader:
         Returns:
             Formatted string with all files and their contents
         """
-        if not module_content:
-            return "No Terraform code found."
-        
-        formatted = []
-        for filename, content in module_content.items():
+    if not module_content:
+        return "No Terraform code found."
+    
+    formatted = []
+    for filename, content in module_content.items():
             formatted.append(
                 f"## File: {filename}\n```hcl\n{content}\n```\n"
             )
-        return "\n".join(formatted)
+    return "\n".join(formatted)
 
 
 class ReportGenerator:
@@ -165,7 +165,7 @@ class ReportGenerator:
             return output_file
         except Exception as e:
             print(f"\n⚠️  Warning: Could not save to file: {e}")
-            return None
+        return None
     
     def get_output(self) -> str:
         """
@@ -289,33 +289,33 @@ class TerraformAnalyzer:
         
         # Step 2: Identify AWS services
         aws_services = self._identify_services(formatted_content, rg)
-        
+    
         # Step 3: Fetch best practices
         best_practices_docs = self._fetch_best_practices(aws_services, rg)
         
         # Step 4: Generate recommendations
         recommendations = self._generate_recommendations(
             formatted_content, aws_services, best_practices_docs, rg
-        )
-        
+    )
+    
         # Present final results
         self._present_results(recommendations, rg)
-        
-        # Save to file if requested
-        output_file = None
-        if save_to_file:
-            module_name = Path(terraform_dir).name
-            output_file = rg.save_to_file(module_name)
-        
-        return {
-            "module_directory": terraform_dir,
-            "files_analyzed": [f.name for f in tf_files],
-            "aws_services": aws_services,
-            "best_practices_resources": best_practices_docs,
-            "recommendations": recommendations,
-            "output_file": output_file
-        }
     
+    # Save to file if requested
+    output_file = None
+    if save_to_file:
+        module_name = Path(terraform_dir).name
+            output_file = rg.save_to_file(module_name)
+    
+    return {
+        "module_directory": terraform_dir,
+        "files_analyzed": [f.name for f in tf_files],
+        "aws_services": aws_services,
+        "best_practices_resources": best_practices_docs,
+        "recommendations": recommendations,
+        "output_file": output_file
+    }
+
     def _read_code(
         self,
         terraform_dir: str,

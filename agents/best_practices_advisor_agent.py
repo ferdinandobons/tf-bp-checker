@@ -83,15 +83,15 @@ class BestPracticesAdvisorAgent(OllamaAgent):
         best_practices_resources: str
     ) -> str:
         """
-        Generate specific, actionable recommendations.
+            Generate specific, actionable recommendations.
         
         Args:
-            terraform_code: Current Terraform code from the module
-            aws_services: JSON array of AWS services identified
-            best_practices_resources: Documentation from Terraform Registry
+                terraform_code: Current Terraform code from the module
+                aws_services: JSON array of AWS services identified
+                best_practices_resources: Documentation from Terraform Registry
             
         Returns:
-            Detailed recommendations with code examples and priorities
+                Detailed recommendations with code examples and priorities
         """
         print("💡 Analyzing code and generating recommendations...")
         

@@ -14,7 +14,7 @@ from .config import RESOURCES_FETCHER_SYSTEM_PROMPT
 class ResourcesFetcherAgent(AnthropicAgent):
     """
     Agent specialized in fetching best practices from Terraform Registry.
-    
+
     This agent uses Anthropic models with MCP tools to query the
     Terraform Registry and retrieve comprehensive documentation on
     resources and best practices.
@@ -28,10 +28,10 @@ class ResourcesFetcherAgent(AnthropicAgent):
             terraform_tools: List of tools from the Terraform MCP server
         """
         super().__init__(
-            system_prompt=RESOURCES_FETCHER_SYSTEM_PROMPT,
+        system_prompt=RESOURCES_FETCHER_SYSTEM_PROMPT,
             tools=terraform_tools
-        )
-    
+    )
+
     def analyze(self, aws_services: str) -> str:
         """
         Fetch best practices documentation for given AWS services.
@@ -81,7 +81,6 @@ information.
         result = self.execute(resources_prompt)
         print("✅ Best practices documentation retrieved from Registry")
         return result
-
 
 def create_resources_fetcher_agent(terraform_tools: List) -> Agent:
     """
