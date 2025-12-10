@@ -1,77 +1,103 @@
-from strands import Agent, tool
-from strands.models.ollama import OllamaModel
+"""
+Best Practices Advisor Agent for generating recommendations.
 
-# Create Ollama model instance for recommendations
-ollama_model = OllamaModel(
-    host="http://localhost:11434",
-    model_id="llama3.2",
-    max_tokens=20000,
-    temperature=0.1,
-    keep_alive="10m",
+This module provides the BestPracticesAdvisorAgent class that analyzes
+Terraform code and generates actionable recommendations.
+"""
+
+from typing import Optional
+from strands import tool
+from .base import OllamaAgent
+from .config import (
+    BEST_PRACTICES_ADVISOR_SYSTEM_PROMPT,
+    OLLAMA_HOST,
+    OLLAMA_MODEL_ID,
+    OLLAMA_MAX_TOKENS,
+    OLLAMA_TEMPERATURE,
+    OLLAMA_KEEP_ALIVE
 )
 
-BEST_PRACTICES_ADVISOR_SYSTEM_PROMPT = """You are a senior Terraform architect and AWS security expert specializing in code review and best practices.
 
-Your task is to analyze existing Terraform code and provide specific, actionable recommendations.
-
-Given:
-1. The existing Terraform code from a module
-2. The AWS services being used
-3. Complete documentation of available Terraform resources and best practices for those services
-
-Provide a detailed analysis that includes:
-
-## Current Implementation Summary
-- List all AWS services currently configured
-- List all Terraform resources currently used
-
-## Missing Best Practices
-For each service, identify what's missing:
-- **Security**: Missing encryption, access controls, logging, etc.
-- **Performance**: Missing optimization features, caching, monitoring
-- **Compliance**: Missing versioning, backup, audit trails
-- **Cost Optimization**: Missing lifecycle policies, intelligent tiering, etc.
-
-## Recommendations
-For each missing best practice, provide:
-1. **What to add**: The specific Terraform resource(s) needed
-2. **Why it matters**: The security/performance/compliance benefit
-3. **How to implement**: Brief code example showing the resource configuration
-4. **Priority**: HIGH (critical security/compliance) / MEDIUM (important optimization) / LOW (nice to have)
-
-## Implementation Priority
-Prioritize recommendations by impact:
-1. Critical security vulnerabilities
-2. Compliance requirements
-3. Performance improvements
-4. Cost optimizations
-
-Be specific, practical, and focus on actionable changes. Use code examples."""
-
-
-@tool
-def generate_recommendations(terraform_code: str, aws_services: str, best_practices_resources: str) -> str:
+class BestPracticesAdvisorAgent(OllamaAgent):
     """
-    Generate specific, actionable recommendations for improving Terraform code based on best practices.
+    Agent specialized in generating best practices recommendations.
     
-    Args:
-        terraform_code: The current Terraform code from the module
-        aws_services: JSON array of AWS services identified in the code
-        best_practices_resources: Documentation from Terraform Registry on best practices
-        
-    Returns:
-        Detailed recommendations with code examples and priority levels
+    This agent analyzes Terraform code against best practices documentation
+    and generates specific, actionable recommendations for improvements.
     """
-    try:
+    
+    def __init__(
+        self,
+        host: str = OLLAMA_HOST,
+        model_id: str = OLLAMA_MODEL_ID,
+        max_tokens: int = OLLAMA_MAX_TOKENS,
+        temperature: float = OLLAMA_TEMPERATURE,
+        keep_alive: str = OLLAMA_KEEP_ALIVE
+    ):
+        """
+        Initialize the Best Practices Advisor Agent.
+        
+        Args:
+            host: Ollama server host URL
+            model_id: Model identifier
+            max_tokens: Maximum tokens for generation
+            temperature: Sampling temperature
+            keep_alive: Keep-alive duration for model
+        """
+        super().__init__(
+            system_prompt=BEST_PRACTICES_ADVISOR_SYSTEM_PROMPT,
+            host=host,
+            model_id=model_id,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            keep_alive=keep_alive
+        )
+    
+    def analyze(
+        self,
+        terraform_code: str,
+        aws_services: str,
+        best_practices_resources: str
+    ) -> str:
+        """
+        Generate recommendations for improving Terraform code.
+        
+        Args:
+            terraform_code: Current Terraform code from the module
+            aws_services: JSON array of AWS services identified
+            best_practices_resources: Documentation from Terraform Registry
+            
+        Returns:
+            Detailed recommendations with code examples and priorities
+        """
+        return self.generate_recommendations(
+            terraform_code,
+            aws_services,
+            best_practices_resources
+        )
+    
+    def generate_recommendations(
+        self,
+        terraform_code: str,
+        aws_services: str,
+        best_practices_resources: str
+    ) -> str:
+        """
+        Generate specific, actionable recommendations.
+        
+        Args:
+            terraform_code: Current Terraform code from the module
+            aws_services: JSON array of AWS services identified
+            best_practices_resources: Documentation from Terraform Registry
+            
+        Returns:
+            Detailed recommendations with code examples and priorities
+        """
         print("💡 Analyzing code and generating recommendations...")
         
-        advisor_agent = Agent(
-            #model=ollama_model,
-            system_prompt=BEST_PRACTICES_ADVISOR_SYSTEM_PROMPT,
-        )
-        
         advisor_prompt = f"""
-Analyze the following Terraform module and provide specific recommendations for implementing best practices.
+Analyze the following Terraform module and provide specific recommendations \
+for implementing best practices.
 
 ## Current Terraform Code:
 {terraform_code}
@@ -83,8 +109,10 @@ Analyze the following Terraform module and provide specific recommendations for 
 {best_practices_resources}
 
 ## Your Task:
-Compare the current implementation with the best practices documentation from the Terraform Registry.
-Identify what's missing and provide specific, actionable recommendations to improve:
+Compare the current implementation with the best practices documentation \
+from the Terraform Registry.
+Identify what's missing and provide specific, actionable recommendations \
+to improve:
 - Security (encryption, access control, logging)
 - Performance (monitoring, optimization)
 - Compliance (versioning, backup, audit)
@@ -99,14 +127,58 @@ For each recommendation:
 Focus on practical, implementable changes that will have real impact.
 """
         
-        recommendations = advisor_agent(advisor_prompt)
-        result = str(recommendations)
+        recommendations = self.execute(advisor_prompt)
         
-        if len(result) > 0:
-            return result
+        if recommendations and len(recommendations) > 0:
+            return recommendations
         
-        return "Unable to generate recommendations. Please check the input data."
+        return "Unable to generate recommendations. Please check input data."
+
+
+# Global instance for backward compatibility
+_advisor_instance: Optional[BestPracticesAdvisorAgent] = None
+
+
+def get_advisor() -> BestPracticesAdvisorAgent:
+    """
+    Get or create the global BestPracticesAdvisorAgent instance.
+    
+    Returns:
+        BestPracticesAdvisorAgent instance
+    """
+    global _advisor_instance
+    if _advisor_instance is None:
+        _advisor_instance = BestPracticesAdvisorAgent()
+    return _advisor_instance
+
+
+@tool
+def generate_recommendations(
+    terraform_code: str,
+    aws_services: str,
+    best_practices_resources: str
+) -> str:
+    """
+    Generate recommendations for improving Terraform code.
+    
+    This is a tool wrapper for backward compatibility with the existing API.
+    
+    Args:
+        terraform_code: Current Terraform code from the module
+        aws_services: JSON array of AWS services identified
+        best_practices_resources: Documentation from Terraform Registry
         
+    Returns:
+        Detailed recommendations with code examples and priorities
+    """
+    try:
+        advisor = get_advisor()
+        return advisor.generate_recommendations(
+            terraform_code,
+            aws_services,
+            best_practices_resources
+        )
     except Exception as e:
-        print(f"❌ Error generating recommendations: {str(e)}")
-        return f"Error generating recommendations: {str(e)}"
+        error_msg = f"Error generating recommendations: {str(e)}"
+        print(f"❌ {error_msg}")
+        return error_msg
