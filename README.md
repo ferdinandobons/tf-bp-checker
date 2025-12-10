@@ -167,38 +167,48 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "bucket_encryption
 
 ## 🏗️ Architecture
 
-### Multi-Agent System
+### Object-Oriented Multi-Agent System
 
-The tool uses a **modular multi-agent architecture** with specialized agents coordinated by an orchestrator:
+The tool uses a **modern OOP architecture** with specialized agents coordinated by an orchestrator class:
 
 ```
-main.py (Orchestrator)
+TerraformAnalyzer (Orchestrator)
     ↓
-    ├─→ agents/service_analyzer_agent.py (Agent 1)
+    ├─→ ServiceAnalyzerAgent (Agent 1)
     │   └─→ Identifies AWS services in code
     │
-    ├─→ agents/resources_fetcher_agent.py (Agent 2)
+    ├─→ ResourcesFetcherAgent (Agent 2)
     │   └─→ Queries Terraform Registry via MCP
     │
-    └─→ agents/best_practices_advisor_agent.py (Agent 3)
+    └─→ BestPracticesAdvisorAgent (Agent 3)
         └─→ Generates actionable recommendations
 ```
 
-### Agent Details
+### Class Structure
 
-| Agent | File | Model | Purpose | Tools |
-|-------|------|-------|---------|-------|
-| **Service Analyzer** | `service_analyzer_agent.py` | Ollama (llama3.2) | Identifies AWS services in Terraform code | - |
-| **Resources Fetcher** | `resources_fetcher_agent.py` | Anthropic (default) | Queries Terraform Registry for best practices | 34 MCP tools |
-| **Best Practices Advisor** | `best_practices_advisor_agent.py` | Ollama (llama3.2) | Compares code with best practices and generates recommendations | - |
+| Class | File | Base Class | Purpose |
+|-------|------|------------|---------|
+| **TerraformAnalyzer** | `main.py` | - | Main orchestrator coordinating all agents |
+| **ServiceAnalyzerAgent** | `service_analyzer_agent.py` | OllamaAgent | Identifies AWS services in Terraform code |
+| **ResourcesFetcherAgent** | `resources_fetcher_agent.py` | AnthropicAgent | Queries Terraform Registry for best practices |
+| **BestPracticesAdvisorAgent** | `best_practices_advisor_agent.py` | OllamaAgent | Generates recommendations |
+| **BaseAgent** | `base.py` | ABC | Abstract base class for all agents |
+| **OllamaAgent** | `base.py` | BaseAgent | Base class for Ollama-powered agents |
+| **AnthropicAgent** | `base.py` | BaseAgent | Base class for Anthropic-powered agents |
+| **TerraformFileReader** | `main.py` | - | Handles file I/O operations |
+| **ReportGenerator** | `main.py` | - | Manages output formatting and saving |
+| **MCPClientManager** | `main.py` | - | Manages MCP client lifecycle |
 
-### Why This Design?
+### Why This OOP Design?
 
-- **Modular architecture**: Each agent is a separate file with clear responsibilities
-- **Ollama agents**: Fast, local processing for code analysis and recommendations
-- **MCP agent**: Direct access to official Terraform Registry documentation
-- **Separation of concerns**: Easy to maintain, test, and extend individual agents
-- **Reusable components**: Agents can be imported and used independently
+- **Proper encapsulation**: Each class has clear responsibilities and internal state
+- **Inheritance hierarchy**: Base classes provide common functionality
+- **Single Responsibility Principle**: Each class does one thing well
+- **Dependency injection**: Agents receive their dependencies through constructors
+- **Easy to test**: Classes can be tested independently with mocks
+- **PEP8 compliant**: Follows Python style guidelines
+- **Extensible**: Easy to add new agent types or functionality
+- **Reusable components**: All classes can be imported and used independently
 
 ## 📋 Requirements
 
@@ -222,78 +232,126 @@ main.py (Orchestrator)
 
 ### Using Different Models
 
-The tool uses Ollama for analysis agents. To change the model, edit the agent files:
+The tool uses configuration constants in `agents/config.py`. To change models:
 
-**For Service Analyzer:**
+**Edit Global Configuration:**
 ```python
-# In agents/service_analyzer_agent.py, line 4-10
-ollama_model = OllamaModel(
-    host="http://localhost:11434",
-    model_id="llama3.2",  # Change this
-    max_tokens=20000,
-    temperature=0.1,
-    keep_alive="10m",
+# In agents/config.py
+OLLAMA_HOST = "http://localhost:11434"
+OLLAMA_MODEL_ID = "llama3.2"
+OLLAMA_MAX_TOKENS = 20000
+OLLAMA_TEMPERATURE = 0.1
+OLLAMA_KEEP_ALIVE = "10m"
+```
+
+**Or Create Custom Agents:**
+```python
+from agents import ServiceAnalyzerAgent
+
+# Custom agent instance with different model
+analyzer = ServiceAnalyzerAgent(
+    model_id="mixtral:8x7b",
+    max_tokens=30000,
+    temperature=0.05
 )
 ```
 
-**For Best Practices Advisor:**
-```python
-# In agents/best_practices_advisor_agent.py, line 4-10
-ollama_model = OllamaModel(
-    host="http://localhost:11434",
-    model_id="llama3.2",  # Change this
-    max_tokens=20000,
-    temperature=0.1,
-    keep_alive="10m",
-)
-```
+### Programmatic Usage
 
-### Using Default Anthropic Model
-
-To use Anthropic's Claude instead of Ollama for analysis:
+The OOP design allows you to use the system programmatically:
 
 ```python
-# In agents/service_analyzer_agent.py or agents/best_practices_advisor_agent.py
-# Comment out the model parameter in the Agent creation:
-agent = Agent(
-    # model=ollama_model,  # Comment this line
-    system_prompt=SYSTEM_PROMPT,
-)
+from main import TerraformAnalyzer, MCPClientManager
+
+# Initialize MCP client
+with MCPClientManager() as mcp:
+    tools = mcp.list_tools()
+    
+    # Create analyzer
+    analyzer = TerraformAnalyzer(tools)
+    
+    # Run analysis
+    result = analyzer.analyze_module("./my-terraform-module")
+    
+    print(f"Services found: {result['aws_services']}")
+    print(f"Recommendations: {result['recommendations']}")
 ```
 
 ### Extending the System
 
-Thanks to the modular architecture, you can easily:
+Thanks to the OOP architecture, you can easily extend the system:
 
-**Add new agents:**
+**Create a Custom Agent:**
 ```python
-# Create agents/new_custom_agent.py
-from strands import Agent, tool
+# Create agents/custom_agent.py
+from agents.base import OllamaAgent
 
-@tool
-def new_analysis_function(data: str) -> str:
-    agent = Agent(system_prompt="...")
-    return agent(data)
+class CustomAnalyzerAgent(OllamaAgent):
+    """Custom agent for specialized analysis."""
+    
+    def __init__(self):
+        super().__init__(
+            system_prompt="Your custom prompt here...",
+            model_id="llama3.2"
+        )
+    
+    def analyze(self, data: str) -> str:
+        """Perform custom analysis."""
+        prompt = f"Analyze: {data}"
+        return self.execute(prompt)
 ```
 
-**Customize existing agents:**
-Each agent file is self-contained and can be modified independently without affecting others.
+**Use Inheritance for Common Functionality:**
+```python
+from agents.base import BaseAgent
+
+class MyAgent(BaseAgent):
+    """Your custom agent."""
+    
+    def analyze(self, *args, **kwargs) -> str:
+        # Implement your logic
+        return self.execute("your prompt")
+```
+
+**Customize the Orchestrator:**
+```python
+from main import TerraformAnalyzer
+
+class CustomAnalyzer(TerraformAnalyzer):
+    """Custom orchestrator with additional steps."""
+    
+    def analyze_module(self, terraform_dir: str, **kwargs):
+        # Add pre-processing
+        result = super().analyze_module(terraform_dir, **kwargs)
+        # Add post-processing
+        return result
+```
 
 ## 📁 Project Structure
 
 ### Tool Structure
 
 ```
-terraform-suggestions/
-├── main.py                              # Orchestrator that coordinates all agents
-├── agents/                              # Multi-agent system
-│   ├── __init__.py                     # Package initialization
-│   ├── service_analyzer_agent.py       # Agent 1: Identifies AWS services
-│   ├── resources_fetcher_agent.py      # Agent 2: Queries Terraform Registry
-│   └── best_practices_advisor_agent.py # Agent 3: Generates recommendations
+tf-bp-checker/
+├── main.py                              # Main orchestrator with OOP classes
+│   ├── TerraformAnalyzer               # Main analysis orchestrator
+│   ├── TerraformFileReader             # File I/O operations
+│   ├── ReportGenerator                 # Output formatting and saving
+│   └── MCPClientManager                # MCP client lifecycle management
+├── agents/                              # Multi-agent system package
+│   ├── __init__.py                     # Package exports
+│   ├── base.py                         # Base classes for all agents
+│   │   ├── BaseAgent                   # Abstract base class
+│   │   ├── OllamaAgent                 # Ollama agent base
+│   │   └── AnthropicAgent              # Anthropic agent base
+│   ├── config.py                       # Configuration constants
+│   ├── service_analyzer_agent.py       # ServiceAnalyzerAgent class
+│   ├── resources_fetcher_agent.py      # ResourcesFetcherAgent class
+│   └── best_practices_advisor_agent.py # BestPracticesAdvisorAgent class
 ├── requirements.txt                     # Python dependencies
 ├── README.md                            # Documentation
-└── example_output.txt                   # Sample analysis output
+└── s3/                                  # Example Terraform module
+    └── s3.tf
 ```
 
 ### Example Terraform Module Structure
