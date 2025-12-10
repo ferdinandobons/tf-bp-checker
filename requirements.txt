@@ -1,0 +1,7 @@
+# Strands Agents with Ollama support
+strands-agents[ollama]
+strands-agents-tools
+strands-agents-builder
+
+# Model Context Protocol client
+mcp
