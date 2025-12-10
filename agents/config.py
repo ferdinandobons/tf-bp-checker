@@ -129,4 +129,3 @@ Terraform Registry
 3. Finally, use generate_recommendations to create actionable suggestions
 
 Always follow this sequence and ensure data flows correctly between agents."""
-

@@ -81,7 +81,6 @@ Return a JSON array of AWS service names."""
         print("⚠️  No services identified, returning default")
         return '["unknown"]'
 
-
 # Global instance for backward compatibility
 _service_analyzer_instance: Optional[ServiceAnalyzerAgent] = None
 
