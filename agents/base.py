@@ -3,6 +3,14 @@ Base classes for Terraform Best Practices Analyzer agents.
 
 This module provides abstract base classes and interfaces for all
 specialized agents in the system.
+
+MCP Tool Support:
+    MCP (Model Context Protocol) tools can be used with any model that
+    supports function/tool calling, including:
+    - Anthropic (Claude) - default in this implementation
+    - OpenAI (GPT-4, GPT-3.5-turbo)
+    - Google (Gemini)
+    - Other providers with function calling support
 """
 
 from abc import ABC, abstractmethod
@@ -224,6 +232,10 @@ class AnthropicAgent(BaseAgent):
     Uses the default Anthropic model configuration from Strands.
     This is typically used for agents that need access to MCP tools
     or require Claude's advanced capabilities.
+    
+    Note: While this class uses Anthropic models, MCP tools can work
+    with any model that supports function calling (OpenAI, Google, etc.).
+    This is just the default implementation in Strands.
     """
     
     def __init__(
@@ -237,10 +249,91 @@ class AnthropicAgent(BaseAgent):
         Args:
             system_prompt: The system prompt for the agent
             tools: Optional list of tools (e.g., MCP tools)
+            
+        Note:
+            MCP tools are protocol-agnostic and can work with any model
+            that supports function calling. We use Anthropic here as it's
+            the default in Strands, but you could create similar classes
+            for OpenAI, Google Gemini, or other providers.
         """
         super().__init__(
             system_prompt=system_prompt,
             model=None,  # None uses default Anthropic model
             tools=tools
         )
+
+
+class ToolCapableAgent(BaseAgent):
+    """
+    Generic base class for agents that can use tools (including MCP).
+    
+    This class can be used with any model that supports function calling.
+    MCP tools work with multiple providers:
+    - Anthropic (Claude)
+    - OpenAI (GPT-4, GPT-3.5-turbo)
+    - Google (Gemini)
+    - Any other model with function calling support
+    
+    Example:
+        >>> # Using with OpenAI
+        >>> from strands.models.openai import OpenAIModel
+        >>> model = OpenAIModel(model_id="gpt-4")
+        >>> agent = ToolCapableAgent(
+        ...     system_prompt="You are a helpful assistant",
+        ...     model=model,
+        ...     tools=mcp_tools
+        ... )
+        
+        >>> # Using with Google Gemini
+        >>> from strands.models.gemini import GeminiModel
+        >>> model = GeminiModel(model_id="gemini-pro")
+        >>> agent = ToolCapableAgent(
+        ...     system_prompt="You are a helpful assistant",
+        ...     model=model,
+        ...     tools=mcp_tools
+        ... )
+    """
+    
+    def __init__(
+        self,
+        system_prompt: str,
+        model: Any,
+        tools: Optional[List] = None
+    ):
+        """
+        Initialize a tool-capable agent with any model.
+        
+        Args:
+            system_prompt: The system prompt for the agent
+            model: Any Strands-compatible model instance that supports
+                   function calling (OpenAI, Anthropic, Gemini, etc.)
+            tools: Optional list of tools (e.g., MCP tools)
+            
+        Note:
+            The model must support function/tool calling to use MCP tools.
+            Most modern LLM APIs (OpenAI, Anthropic, Google) support this.
+        """
+        super().__init__(
+            system_prompt=system_prompt,
+            model=model,
+            tools=tools
+        )
+    
+    def analyze(self, *args: Any, **kwargs: Any) -> str:
+        """
+        Default analyze implementation for tool-capable agents.
+        
+        Can be overridden by subclasses for specific behavior.
+        
+        Args:
+            *args: Positional arguments
+            **kwargs: Keyword arguments
+            
+        Returns:
+            Analysis results as string
+        """
+        if args:
+            prompt = str(args[0])
+            return self.execute(prompt)
+        raise ValueError("analyze() requires at least one argument")
 
