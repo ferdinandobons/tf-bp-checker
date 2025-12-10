@@ -28,7 +28,12 @@ from .best_practices_advisor_agent import (
 )
 
 # Import base classes
-from .base import BaseAgent, OllamaAgent, AnthropicAgent
+from .base import (
+    BaseAgent,
+    OllamaAgent,
+    AnthropicAgent,
+    ToolCapableAgent
+)
 
 # Import configuration
 from . import config
@@ -43,6 +48,7 @@ __all__ = [
     'BaseAgent',
     'OllamaAgent',
     'AnthropicAgent',
+    'ToolCapableAgent',
     
     # Tool functions (backward compatibility)
     'analyze_aws_services',
